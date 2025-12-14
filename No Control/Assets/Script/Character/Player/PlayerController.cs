@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.Controls;
 
 public class PlayerController : MonoBehaviour
 {
@@ -13,53 +14,78 @@ public class PlayerController : MonoBehaviour
     [Header("状态监测 (只读)")]
     public bool isDead;                   // 核心状态：是否死亡
 
+    [Header("Chaos系统引用")]
+    public InputChaosManager chaosManager;
+
     // --- 组件引用 ---
     private InputActions inputActions;    // 新版输入系统的实例
+    
     private Rigidbody2D rb;
     private Animator animator;
 
     // --- 内部变量 ---
     private Vector2 moveInput;            // 存储玩家当前的输入方向
     private bool isMeleeAttack;           // 防止攻击连点（攻击冷却锁）
+    private bool lastAttackPressed;
 
     // 1. 初始化组件
     private void Awake()
     {
         inputActions = new InputActions();
         rb = GetComponent<Rigidbody2D>();
-        animator = GetComponent<Animator>();
+        animator = GetComponentInChildren<Animator>();
     }
 
     // 2. 激活输入系统 (事件订阅)
     private void OnEnable()
     {
         inputActions.Gameplay.Enable();
-        // 当按下攻击键时，调用 OnMeleeAttack 函数
-        inputActions.Gameplay.MeleeAttack.started += OnMeleeAttack;
+
     }
 
     // 3. 禁用输入系统 (取消订阅，防止内存泄漏)
     private void OnDisable()
     {
-        inputActions.Gameplay.MeleeAttack.started -= OnMeleeAttack;
+        inputActions.Gameplay.MeleeAttack.performed -= OnMeleeAttack;
         inputActions.Gameplay.Disable();
     }
 
     // 4. 每帧逻辑：处理输入读取 和 动画更新
     private void Update()
     {
-        // 【逻辑锁】如果你死了，就完全切断输入读取，也不再更新跑动动画
         if (isDead) return;
 
-        // 实时读取手柄/键盘的 Vector2 输入
-        moveInput = inputActions.Gameplay.Move.ReadValue<Vector2>();
-        
-        // 更新动画参数
+        Vector2 input = Vector2.zero;
+
+        // 移动按键字典映射
+        if (Keyboard.current[chaosManager.GetKeyForAction("MoveUp")]?.isPressed == true) input.y += 1;
+        if (Keyboard.current[chaosManager.GetKeyForAction("MoveDown")]?.isPressed == true) input.y -= 1;
+        if (Keyboard.current[chaosManager.GetKeyForAction("MoveLeft")]?.isPressed == true) input.x -= 1;
+        if (Keyboard.current[chaosManager.GetKeyForAction("MoveRight")]?.isPressed == true) input.x += 1;
+
+        moveInput = input.normalized;
+
+        // 攻击按键
+        if (chaosManager != null)
+        {
+            Key attackKey = chaosManager.GetKeyForAction("Attack");
+            KeyControl kc = Keyboard.current[attackKey];
+            bool currPressed = kc != null && kc.isPressed;
+
+            if (currPressed && !lastAttackPressed)
+                OnMeleeAttack(new InputAction.CallbackContext());
+
+            lastAttackPressed = currPressed;
+        }
+
+
+        // 更新动画
         animator.SetFloat("Horizontal", moveInput.x);
         animator.SetFloat("Vertical", moveInput.y);
-        animator.SetFloat("Speed", moveInput.sqrMagnitude); // 用向量长度判断是否在动
+        animator.SetFloat("Speed", moveInput.sqrMagnitude);
         animator.SetBool("isMeleeAttack", isMeleeAttack);
     }
+
 
     // 5. 物理帧逻辑：处理刚体移动
     private void FixedUpdate()
