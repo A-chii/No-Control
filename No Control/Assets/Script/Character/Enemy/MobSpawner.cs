@@ -77,4 +77,19 @@ public class MobSpawner : MonoBehaviour
         currentWave = 0;
         spawnTimer = SpawnInterval;
     }
+    private void End()
+{
+    if (GameApp.Instance == null) return;
+    // 新增：过关状态直接返回，停止生成
+    if (GameApp.Instance.State is GameApp.GameState.Break or GameApp.GameState.Dead or GameApp.GameState.Win) return;
+    if (currentWave >= MaxSpawnWaves) return;
+
+    spawnTimer -= Time.deltaTime;
+    if (spawnTimer <= 0f)
+    {
+        SpawnMobs();
+        currentWave++;
+        spawnTimer = SpawnInterval;
+    }
+}
 }

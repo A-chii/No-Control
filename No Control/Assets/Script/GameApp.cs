@@ -25,7 +25,8 @@ public class GameApp : MonoBehaviour
     {
         Normal,
         Break,
-        Dead
+        Dead,
+        Win
     }
 
     public GameState State { get; set; } = GameState.Normal;
