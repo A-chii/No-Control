@@ -127,6 +127,18 @@ public class PlayerController : MonoBehaviour
         if (isDead || isMeleeAttack || animator == null) return;
         isMeleeAttack = true;
         animator.SetTrigger("MeleeAttack");
+
+        // 攻击检测：删除半径0.5内标签为Enemy的对象
+        Collider2D[] hitEnemies = Physics2D.OverlapCircleAll(transform.position, 1.5f);
+        foreach (Collider2D enemy in hitEnemies)
+        {
+            if (enemy.CompareTag("Enemy"))
+            {
+                Destroy(enemy.gameObject);
+                Debug.Log("【系统】玩家攻击成功");
+            }
+        }
+
         StartCoroutine(ResetAttackState());
     }
 
